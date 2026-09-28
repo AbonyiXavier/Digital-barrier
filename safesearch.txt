@@ -1,0 +1,29 @@
+# Digital Barrier -- forced safe search.
+#
+# Each line maps a search hostname to the alternate host that serves the same
+# site with explicit results disabled. Comment a line out to stop forcing that
+# engine. Apply changes with: sudo ./barrier reload
+#
+#   <hostname>                  <safe-search host>
+
+# --- Google ---
+google.com                      forcesafesearch.google.com
+www.google.com                  forcesafesearch.google.com
+images.google.com               forcesafesearch.google.com
+
+# --- YouTube ---
+# restrictmoderate.youtube.com is Moderate; restrict.youtube.com is Strict.
+# Strict blocks a great deal of harmless content -- start with moderate.
+youtube.com                     restrictmoderate.youtube.com
+www.youtube.com                 restrictmoderate.youtube.com
+m.youtube.com                   restrictmoderate.youtube.com
+youtubei.googleapis.com         restrictmoderate.youtube.com
+youtube.googleapis.com          restrictmoderate.youtube.com
+
+# --- Bing ---
+bing.com                        strict.bing.com
+www.bing.com                    strict.bing.com
+
+# --- DuckDuckGo ---
+duckduckgo.com                  safe.duckduckgo.com
+www.duckduckgo.com              safe.duckduckgo.com

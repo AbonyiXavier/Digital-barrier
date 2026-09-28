@@ -1,0 +1,4 @@
+# Managed by 'barrier sync' -- edited here, this file is overwritten.
+# Add exceptions in the app; they arrive on the next sync.
+
+medicalnewstoday.com

@@ -1,0 +1,21 @@
+{
+  "name": "digital-barrier",
+  "version": "0.1.0",
+  "private": true,
+  "description": "DNS-level content filtering prototype",
+  "type": "module",
+  "engines": {
+    "node": ">=18"
+  },
+  "scripts": {
+    "build": "tsc",
+    "watch": "tsc --watch",
+    "typecheck": "tsc --noEmit",
+    "test": "npm run build && node dist/tests/prototype.test.js",
+    "barrier": "npm run build && node dist/src/cli.js"
+  },
+  "devDependencies": {
+    "@types/node": "^26.6.2",
+    "typescript": "^7.0.2"
+  }
+}

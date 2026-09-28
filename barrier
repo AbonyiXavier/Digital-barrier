@@ -1,0 +1,24 @@
+#!/usr/bin/env bash
+# Digital Barrier launcher. Builds on demand, then runs the CLI -- so
+# `sudo ./barrier on` works from any directory without a separate build step.
+set -euo pipefail
+HERE="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+
+if ! command -v node >/dev/null 2>&1; then
+  echo "error: node is not on PATH (this project needs Node 18 or newer)" >&2
+  exit 1
+fi
+
+MAJOR="$(node -p 'process.versions.node.split(".")[0]')"
+if [ "$MAJOR" -lt 18 ]; then
+  echo "error: Node $(node --version) is too old; this project needs Node 18+." >&2
+  echo "       With nvm:  nvm use            (see .nvmrc)" >&2
+  exit 1
+fi
+
+if [ ! -f "$HERE/dist/src/cli.js" ]; then
+  echo "building..." >&2
+  (cd "$HERE" && npm run --silent build)
+fi
+
+exec node "$HERE/dist/src/cli.js" "$@"

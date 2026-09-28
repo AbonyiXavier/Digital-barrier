@@ -1,0 +1,14 @@
+# Digital Barrier -- blocked domains.
+# One domain per line. A rule covers the domain and all of its subdomains.
+# Lines starting with # are ignored. Reload with: ./barrier reload
+
+pornhub.com
+xvideos.com
+xnxx.com
+xhamster.com
+redtube.com
+youporn.com
+onlyfans.com
+chaturbate.com
+stripchat.com
+spankbang.com

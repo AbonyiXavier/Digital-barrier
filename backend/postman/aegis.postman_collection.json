@@ -1,0 +1,2209 @@
+{
+  "info": {
+    "name": "Aegis API",
+    "description": "Content blocking, protection locks and accountability. No endpoint returns or stores a visited domain: blocked activity is a daily count.\n\nGenerated from http://localhost:3001/docs/json — re-run scripts/generate-postman.ts after changing any endpoint.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "item": [
+    {
+      "name": "00 · auth",
+      "description": "Run \"sign in\" first. Its test script stores the session cookie, which the rest of the collection then sends automatically.",
+      "item": [
+        {
+          "name": "sign up",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/auth/sign-up/email",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "auth",
+                "sign-up",
+                "email"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Francis Abonyi\",\n  \"email\": \"{{email}}\",\n  \"password\": \"{{password}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "description": "Creates an account. The seeded account already exists — use \"sign in\" for that one."
+          },
+          "response": []
+        },
+        {
+          "name": "sign in",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/auth/sign-in/email",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "auth",
+                "sign-in",
+                "email"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"{{email}}\",\n  \"password\": \"{{password}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const cookie = pm.cookies.get(\"better-auth.session_token\");",
+                  "if (cookie) { pm.collectionVariables.set(\"sessionToken\", cookie); }",
+                  "pm.test(\"signed in\", () => pm.response.to.have.status(200));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "sign out",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/auth/sign-out",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "auth",
+                "sign-out"
+              ]
+            }
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "blocklist",
+      "item": [
+        {
+          "name": "The feeds in force plus this user's own two lists.",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "x-install-id",
+                "value": "{{installId}}",
+                "disabled": true
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/blocklist",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "blocklist"
+              ],
+              "query": []
+            },
+            "description": "The feeds in force plus this user's own two lists."
+          },
+          "response": []
+        },
+        {
+          "name": "Add a domain to the allowlist or the blocklist.",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "x-install-id",
+                "value": "{{installId}}",
+                "disabled": true
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/blocklist/rules",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "blocklist",
+                "rules"
+              ],
+              "query": []
+            },
+            "description": "Add a domain to the allowlist or the blocklist.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"domain\": \"pornhub.com\",\n  \"list\": \"allowed\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Remove a domain from whichever list it is on.",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "x-install-id",
+                "value": "{{installId}}",
+                "disabled": true
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/blocklist/rules/:domain",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "blocklist",
+                "rules",
+                ":domain"
+              ],
+              "variable": [
+                {
+                  "key": "domain",
+                  "value": "",
+                  "description": "domain of the resource"
+                }
+              ],
+              "query": []
+            },
+            "description": "Remove a domain from whichever list it is on."
+          },
+          "response": []
+        },
+        {
+          "name": "Whether feeds refresh on their own.",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "x-install-id",
+                "value": "{{installId}}",
+                "disabled": true
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/blocklist/auto-update",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "blocklist",
+                "auto-update"
+              ],
+              "query": []
+            },
+            "description": "Whether feeds refresh on their own.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"autoUpdate\": true\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Ask for a feed refresh now.",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "x-install-id",
+                "value": "{{installId}}",
+                "disabled": true
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/blocklist/refresh",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "blocklist",
+                "refresh"
+              ],
+              "query": []
+            },
+            "description": "Ask for a feed refresh now."
+          },
+          "response": []
+        },
+        {
+          "name": "The blocklist as a compiled binary, for on-device matching.",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "x-install-id",
+                "value": "{{installId}}",
+                "disabled": true
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/blocklist/compiled",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "blocklist",
+                "compiled"
+              ],
+              "query": []
+            },
+            "description": "The blocklist as a compiled binary, for on-device matching."
+          },
+          "response": []
+        },
+        {
+          "name": "The forced-safe-search mapping table.",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "x-install-id",
+                "value": "{{installId}}",
+                "disabled": true
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/blocklist/safesearch",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "blocklist",
+                "safesearch"
+              ],
+              "query": []
+            },
+            "description": "The forced-safe-search mapping table."
+          },
+          "response": []
+        },
+        {
+          "name": "What the policy would do with this domain, for support and verification.",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "x-install-id",
+                "value": "{{installId}}",
+                "disabled": true
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/blocklist/decide",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "blocklist",
+                "decide"
+              ],
+              "query": [
+                {
+                  "key": "domain",
+                  "value": "",
+                  "description": "The hostname to test.",
+                  "disabled": false
+                }
+              ]
+            },
+            "description": "What the policy would do with this domain, for support and verification."
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "devices",
+      "item": [
+        {
+          "name": "This account's devices.",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "x-install-id",
+                "value": "{{installId}}",
+                "disabled": true
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/devices",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "devices"
+              ],
+              "query": []
+            },
+            "description": "This account's devices."
+          },
+          "response": []
+        },
+        {
+          "name": "Claim a pairing code and register a device.",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "x-install-id",
+                "value": "{{installId}}",
+                "disabled": true
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/devices",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "devices"
+              ],
+              "query": []
+            },
+            "description": "Claim a pairing code and register a device.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"clientRef\": \"p_1758901234567\",\n  \"code\": \"K7M2QP\",\n  \"name\": \"Study PC\",\n  \"platform\": \"ios\",\n  \"installId\": \"string\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Issue a pairing code, valid for ten minutes.",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "x-install-id",
+                "value": "{{installId}}",
+                "disabled": true
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/devices/pairing-code",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "devices",
+                "pairing-code"
+              ],
+              "query": []
+            },
+            "description": "Issue a pairing code, valid for ten minutes."
+          },
+          "response": []
+        },
+        {
+          "name": "Rename a device, or pause and resume it.",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "x-install-id",
+                "value": "{{installId}}",
+                "disabled": true
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/devices/:id",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "devices",
+                ":id"
+              ],
+              "variable": [
+                {
+                  "key": "id",
+                  "value": "",
+                  "description": "id of the resource"
+                }
+              ],
+              "query": []
+            },
+            "description": "Rename a device, or pause and resume it.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Study PC\",\n  \"status\": \"protected\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Remove a device and its block history.",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "x-install-id",
+                "value": "{{installId}}",
+                "disabled": true
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/devices/:id",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "devices",
+                ":id"
+              ],
+              "variable": [
+                {
+                  "key": "id",
+                  "value": "",
+                  "description": "id of the resource"
+                }
+              ],
+              "query": []
+            },
+            "description": "Remove a device and its block history."
+          },
+          "response": []
+        },
+        {
+          "name": "Check in, and read back the config this device should be running.",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "x-install-id",
+                "value": "{{installId}}",
+                "disabled": true
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/devices/:id/heartbeat",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "devices",
+                ":id",
+                "heartbeat"
+              ],
+              "variable": [
+                {
+                  "key": "id",
+                  "value": "",
+                  "description": "id of the resource"
+                }
+              ],
+              "query": []
+            },
+            "description": "Check in, and read back the config this device should be running."
+          },
+          "response": []
+        },
+        {
+          "name": "Report a day's block count.",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "x-install-id",
+                "value": "{{installId}}",
+                "disabled": true
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/devices/:id/blocks",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "devices",
+                ":id",
+                "blocks"
+              ],
+              "variable": [
+                {
+                  "key": "id",
+                  "value": "",
+                  "description": "id of the resource"
+                }
+              ],
+              "query": []
+            },
+            "description": "Report a day's block count.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"day\": \"2026-09-26\",\n  \"count\": 11\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "feeds",
+      "item": [
+        {
+          "name": "The latest published artifact: gzipped, sorted, de-duplicated domains.",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "x-install-id",
+                "value": "{{installId}}",
+                "disabled": true
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/feeds/:id/artifact",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "feeds",
+                ":id",
+                "artifact"
+              ],
+              "variable": [
+                {
+                  "key": "id",
+                  "value": "",
+                  "description": "id of the resource"
+                }
+              ],
+              "query": []
+            },
+            "description": "The latest published artifact: gzipped, sorted, de-duplicated domains."
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "health",
+      "item": [
+        {
+          "name": "Process is up. No dependencies checked.",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "x-install-id",
+                "value": "{{installId}}",
+                "disabled": true
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/health/live",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "health",
+                "live"
+              ],
+              "query": []
+            },
+            "description": "Process is up. No dependencies checked."
+          },
+          "response": []
+        },
+        {
+          "name": "Dependencies reachable: Postgres and Redis.",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "x-install-id",
+                "value": "{{installId}}",
+                "disabled": true
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/health/ready",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "health",
+                "ready"
+              ],
+              "query": []
+            },
+            "description": "Dependencies reachable: Postgres and Redis."
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "me",
+      "item": [
+        {
+          "name": "The entire client state, in one call.",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "x-install-id",
+                "value": "{{installId}}",
+                "disabled": true
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/me/bootstrap",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "me",
+                "bootstrap"
+              ],
+              "query": []
+            },
+            "description": "The entire client state, in one call."
+          },
+          "response": []
+        },
+        {
+          "name": "Finish onboarding.",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "x-install-id",
+                "value": "{{installId}}",
+                "disabled": true
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/me/onboarding",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "me",
+                "onboarding"
+              ],
+              "query": []
+            },
+            "description": "Finish onboarding.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"categories\": [\n    \"adult-websites\",\n    \"adult-apps\"\n  ]\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Update name or email.",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "x-install-id",
+                "value": "{{installId}}",
+                "disabled": true
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/me",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "me"
+              ],
+              "query": []
+            },
+            "description": "Update name or email.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Francis Abonyi\",\n  \"email\": \"francis@example.com\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Delete the account.",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "x-install-id",
+                "value": "{{installId}}",
+                "disabled": true
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/me",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "me"
+              ],
+              "query": []
+            },
+            "description": "Delete the account."
+          },
+          "response": []
+        },
+        {
+          "name": "Request a data export.",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "x-install-id",
+                "value": "{{installId}}",
+                "disabled": true
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/me/export",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "me",
+                "export"
+              ],
+              "query": []
+            },
+            "description": "Request a data export."
+          },
+          "response": []
+        },
+        {
+          "name": "Register an Expo push token.",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "x-install-id",
+                "value": "{{installId}}",
+                "disabled": true
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/me/push-token",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "me",
+                "push-token"
+              ],
+              "query": []
+            },
+            "description": "Register an Expo push token.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"token\": \"ExponentPushToken[xxxxxxxxxxxxxxxxxxxxxx]\",\n  \"platform\": \"ios\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "metrics",
+      "item": [
+        {
+          "name": "Blocked attempts per day, for the last seven days.",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "x-install-id",
+                "value": "{{installId}}",
+                "disabled": true
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/metrics/blocks",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "metrics",
+                "blocks"
+              ],
+              "query": []
+            },
+            "description": "Blocked attempts per day, for the last seven days."
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "p",
+      "item": [
+        {
+          "name": "What this invitation is.",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "x-install-id",
+                "value": "{{installId}}",
+                "disabled": true
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/p/:token/invite",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "p",
+                ":token",
+                "invite"
+              ],
+              "variable": [
+                {
+                  "key": "token",
+                  "value": "",
+                  "description": "token of the resource"
+                }
+              ],
+              "query": []
+            },
+            "description": "What this invitation is."
+          },
+          "response": []
+        },
+        {
+          "name": "Accept the invitation. Consumes the link.",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "x-install-id",
+                "value": "{{installId}}",
+                "disabled": true
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/p/:token/accept",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "p",
+                ":token",
+                "accept"
+              ],
+              "variable": [
+                {
+                  "key": "token",
+                  "value": "",
+                  "description": "token of the resource"
+                }
+              ],
+              "query": []
+            },
+            "description": "Accept the invitation. Consumes the link."
+          },
+          "response": []
+        },
+        {
+          "name": "Decline the waiting request",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "x-install-id",
+                "value": "{{installId}}",
+                "disabled": true
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/p/:token/decline",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "p",
+                ":token",
+                "decline"
+              ],
+              "variable": [
+                {
+                  "key": "token",
+                  "value": "",
+                  "description": "token of the resource"
+                }
+              ],
+              "query": []
+            },
+            "description": "Decline the waiting request"
+          },
+          "response": []
+        },
+        {
+          "name": "The request waiting for this partner",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "x-install-id",
+                "value": "{{installId}}",
+                "disabled": true
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/p/:token/request",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "p",
+                ":token",
+                "request"
+              ],
+              "variable": [
+                {
+                  "key": "token",
+                  "value": "",
+                  "description": "token of the resource"
+                }
+              ],
+              "query": []
+            },
+            "description": "The request waiting for this partner"
+          },
+          "response": []
+        },
+        {
+          "name": "Approve the waiting request",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "x-install-id",
+                "value": "{{installId}}",
+                "disabled": true
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/p/:token/approve",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "p",
+                ":token",
+                "approve"
+              ],
+              "variable": [
+                {
+                  "key": "token",
+                  "value": "",
+                  "description": "token of the resource"
+                }
+              ],
+              "query": []
+            },
+            "description": "Approve the waiting request"
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "partners",
+      "item": [
+        {
+          "name": "List the current user’s partners.",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "x-install-id",
+                "value": "{{installId}}",
+                "disabled": true
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/partners",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "partners"
+              ],
+              "query": []
+            },
+            "description": "List the current user’s partners."
+          },
+          "response": []
+        },
+        {
+          "name": "Invite a partner.",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "x-install-id",
+                "value": "{{installId}}",
+                "disabled": true
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/partners",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "partners"
+              ],
+              "query": []
+            },
+            "description": "Invite a partner.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"clientRef\": \"p_1758901234567\",\n  \"name\": \"Amara Abonyi\",\n  \"relationship\": \"Wife\",\n  \"email\": \"amara@example.com\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Remove a partner.",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "x-install-id",
+                "value": "{{installId}}",
+                "disabled": true
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/partners/:id",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "partners",
+                ":id"
+              ],
+              "variable": [
+                {
+                  "key": "id",
+                  "value": "",
+                  "description": "id of the resource"
+                }
+              ],
+              "query": []
+            },
+            "description": "Remove a partner."
+          },
+          "response": []
+        },
+        {
+          "name": "Send the invitation again.",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "x-install-id",
+                "value": "{{installId}}",
+                "disabled": true
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/partners/:id/resend",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "partners",
+                ":id",
+                "resend"
+              ],
+              "variable": [
+                {
+                  "key": "id",
+                  "value": "",
+                  "description": "id of the resource"
+                }
+              ],
+              "query": []
+            },
+            "description": "Send the invitation again."
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "protection",
+      "item": [
+        {
+          "name": "Current protection state",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "x-install-id",
+                "value": "{{installId}}",
+                "disabled": true
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/protection",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "protection"
+              ],
+              "query": []
+            },
+            "description": "Current protection state"
+          },
+          "response": []
+        },
+        {
+          "name": "The fixed four-row category reference table",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "x-install-id",
+                "value": "{{installId}}",
+                "disabled": true
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/protection/categories",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "protection",
+                "categories"
+              ],
+              "query": []
+            },
+            "description": "The fixed four-row category reference table"
+          },
+          "response": []
+        },
+        {
+          "name": "Turn protection on or off",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "x-install-id",
+                "value": "{{installId}}",
+                "disabled": true
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/protection/enabled",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "protection",
+                "enabled"
+              ],
+              "query": []
+            },
+            "description": "Turn protection on or off",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"on\": false,\n  \"grant\": \"string\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Set the protection lock level",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "x-install-id",
+                "value": "{{installId}}",
+                "disabled": true
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/protection/level",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "protection",
+                "level"
+              ],
+              "query": []
+            },
+            "description": "Set the protection lock level",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"level\": 3\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Set the 4-digit PIN",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "x-install-id",
+                "value": "{{installId}}",
+                "disabled": true
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/protection/pin",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "protection",
+                "pin"
+              ],
+              "query": []
+            },
+            "description": "Set the 4-digit PIN",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"pin\": \"4821\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Verify the PIN",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "x-install-id",
+                "value": "{{installId}}",
+                "disabled": true
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/protection/pin/verify",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "protection",
+                "pin",
+                "verify"
+              ],
+              "query": []
+            },
+            "description": "Verify the PIN",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"pin\": \"4821\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Set the level 3 countdown length",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "x-install-id",
+                "value": "{{installId}}",
+                "disabled": true
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/protection/waiting-period",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "protection",
+                "waiting-period"
+              ],
+              "query": []
+            },
+            "description": "Set the level 3 countdown length",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"minutes\": 1440\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Set or clear the level 4 approver",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "x-install-id",
+                "value": "{{installId}}",
+                "disabled": true
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/protection/partner",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "protection",
+                "partner"
+              ],
+              "query": []
+            },
+            "description": "Set or clear the level 4 approver",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"partnerId\": \"clx0partner0id\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Turn accountability on or off",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "x-install-id",
+                "value": "{{installId}}",
+                "disabled": true
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/protection/accountability",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "protection",
+                "accountability"
+              ],
+              "query": []
+            },
+            "description": "Turn accountability on or off",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"on\": true\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Toggle one category",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "x-install-id",
+                "value": "{{installId}}",
+                "disabled": true
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/protection/categories/:id",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "protection",
+                "categories",
+                ":id"
+              ],
+              "variable": [
+                {
+                  "key": "id",
+                  "value": "",
+                  "description": "id of the resource"
+                }
+              ],
+              "query": []
+            },
+            "description": "Toggle one category",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"on\": true\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "requests",
+      "item": [
+        {
+          "name": "Raise a disable or lower-level request",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "x-install-id",
+                "value": "{{installId}}",
+                "disabled": true
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/requests",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "requests"
+              ],
+              "query": []
+            },
+            "description": "Raise a disable or lower-level request",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"clientRef\": \"p_1758901234567\",\n  \"intent\": \"disable\",\n  \"targetLevel\": 2,\n  \"reason\": \"Need to research something for work and the filter is blocking it.\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Request history, newest first",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "x-install-id",
+                "value": "{{installId}}",
+                "disabled": true
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/requests",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "requests"
+              ],
+              "query": [
+                {
+                  "key": "status",
+                  "value": "",
+                  "description": "'pending' is the single open request; 'resolved' is everything else, including declined and expired. Omit for the full history.",
+                  "disabled": true
+                }
+              ]
+            },
+            "description": "Request history, newest first"
+          },
+          "response": []
+        },
+        {
+          "name": "Withdraw a pending request",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "x-install-id",
+                "value": "{{installId}}",
+                "disabled": true
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/requests/:id/cancel",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "requests",
+                ":id",
+                "cancel"
+              ],
+              "variable": [
+                {
+                  "key": "id",
+                  "value": "",
+                  "description": "id of the resource"
+                }
+              ],
+              "query": []
+            },
+            "description": "Withdraw a pending request"
+          },
+          "response": []
+        },
+        {
+          "name": "Claim a delay request whose countdown has finished",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "x-install-id",
+                "value": "{{installId}}",
+                "disabled": true
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/requests/:id/approve",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "requests",
+                ":id",
+                "approve"
+              ],
+              "variable": [
+                {
+                  "key": "id",
+                  "value": "",
+                  "description": "id of the resource"
+                }
+              ],
+              "query": []
+            },
+            "description": "Claim a delay request whose countdown has finished"
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "settings",
+      "item": [
+        {
+          "name": "Which notifications this user wants.",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "x-install-id",
+                "value": "{{installId}}",
+                "disabled": true
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/settings/notifications",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "settings",
+                "notifications"
+              ],
+              "query": []
+            },
+            "description": "Which notifications this user wants."
+          },
+          "response": []
+        },
+        {
+          "name": "Update notification preferences.",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "x-install-id",
+                "value": "{{installId}}",
+                "disabled": true
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/settings/notifications",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "settings",
+                "notifications"
+              ],
+              "query": []
+            },
+            "description": "Update notification preferences.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"blockedAttempts\": true,\n  \"partnerActivity\": true,\n  \"weeklyReport\": true,\n  \"productUpdates\": true\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "What the accountability partner is told about.",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "x-install-id",
+                "value": "{{installId}}",
+                "disabled": true
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/settings/approval",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "settings",
+                "approval"
+              ],
+              "query": []
+            },
+            "description": "What the accountability partner is told about."
+          },
+          "response": []
+        },
+        {
+          "name": "Update partner notification preferences.",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "x-install-id",
+                "value": "{{installId}}",
+                "disabled": true
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/settings/approval",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "settings",
+                "approval"
+              ],
+              "query": []
+            },
+            "description": "Update partner notification preferences.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"notifyOnDisable\": true,\n  \"notifyOnLevelChange\": true,\n  \"weeklyDigest\": true,\n  \"shareActivityDetail\": {}\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "The page shown instead of a DNS error.",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "x-install-id",
+                "value": "{{installId}}",
+                "disabled": true
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/settings/blocked-screen",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "settings",
+                "blocked-screen"
+              ],
+              "query": []
+            },
+            "description": "The page shown instead of a DNS error."
+          },
+          "response": []
+        },
+        {
+          "name": "Customise the blocked screen.",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "x-install-id",
+                "value": "{{installId}}",
+                "disabled": true
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/settings/blocked-screen",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "settings",
+                "blocked-screen"
+              ],
+              "query": []
+            },
+            "description": "Customise the blocked screen.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"theme\": \"calm\",\n  \"headline\": \"string\",\n  \"message\": \"string\",\n  \"showPartnerButton\": true,\n  \"showBreathingExercise\": true\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "subscription",
+      "item": [
+        {
+          "name": "The current plan, and the plan comparison table.",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "x-install-id",
+                "value": "{{installId}}",
+                "disabled": true
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/subscription",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "subscription"
+              ],
+              "query": []
+            },
+            "description": "The current plan, and the plan comparison table."
+          },
+          "response": []
+        },
+        {
+          "name": "Change plan.",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "x-install-id",
+                "value": "{{installId}}",
+                "disabled": true
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/subscription",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "subscription"
+              ],
+              "query": []
+            },
+            "description": "Change plan.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"plan\": \"free\",\n  \"period\": \"monthly\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        }
+      ]
+    }
+  ],
+  "variable": [
+    {
+      "key": "baseUrl",
+      "value": "http://localhost:3000"
+    },
+    {
+      "key": "email",
+      "value": "francis@example.com"
+    },
+    {
+      "key": "password",
+      "value": "aegis-dev-password"
+    },
+    {
+      "key": "sessionToken",
+      "value": ""
+    },
+    {
+      "key": "installId",
+      "value": "postman-install-id"
+    }
+  ]
+}

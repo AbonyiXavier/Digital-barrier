@@ -1,0 +1,567 @@
+// Aegis — schema.
+//
+// Three concepts stay independent, because conflating them builds the wrong
+// product: whether protection is on, the lock that makes turning it off hard,
+// and whether a human is looped in. None is derived from another.
+//
+// One rule shapes this whole file: the product promises "how many requests were
+// blocked -- a count per day. A number, never a name." There is therefore no
+// column anywhere that records a domain a user visited or was blocked from.
+// BlockCount is the only telemetry, and it holds an integer.
+
+generator client {
+  provider = "prisma-client-js"
+  output   = "../generated/prisma"
+}
+
+// Prisma 7 keeps connection URLs out of the schema: see prisma.config.ts.
+datasource db {
+  provider = "postgresql"
+}
+
+// ---------------------------------------------------------------------------
+// Better Auth owns these four. Shapes are dictated by its Prisma adapter; the
+// only addition is `protectedSince`, declared as an additionalField in auth.ts.
+// ---------------------------------------------------------------------------
+
+model User {
+  id            String    @id
+  name          String
+  email         String    @unique
+  emailVerified Boolean   @default(false)
+  image         String?
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  /// Drives "protected for N days". Set when onboarding completes.
+  protectedSince DateTime?
+
+  sessions      Session[]
+  accounts      Account[]
+
+  protection         Protection?
+  approvalSettings   ApprovalSettings?
+  notificationSettings NotificationSettings?
+  blockedScreen      BlockedScreenConfig?
+  subscription       Subscription?
+  devices            Device[]
+  partners           Partner[]
+  requests           DisableRequest[]
+  rules              UserRule[]
+  pairingCodes       PairingCode[]
+  pushTokens         PushToken[]
+
+  @@map("user")
+}
+
+model Session {
+  id        String   @id
+  token     String   @unique
+  userId    String
+  expiresAt DateTime
+  ipAddress String?
+  userAgent String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@map("session")
+}
+
+model Account {
+  id                    String    @id
+  accountId             String
+  providerId            String
+  userId                String
+  accessToken           String?
+  refreshToken          String?
+  idToken               String?
+  accessTokenExpiresAt  DateTime?
+  refreshTokenExpiresAt DateTime?
+  scope                 String?
+  password              String?
+  createdAt             DateTime  @default(now())
+  updatedAt             DateTime  @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@map("account")
+}
+
+model Verification {
+  id         String   @id
+  identifier String
+  value      String
+  expiresAt  DateTime
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  @@index([identifier])
+  @@map("verification")
+}
+
+// ---------------------------------------------------------------------------
+// Protection, the lock, and accountability
+// ---------------------------------------------------------------------------
+
+enum ProtectionCategory {
+  ADULT_WEBSITES
+  ADULT_APPS
+  ADULT_SEARCH
+  GAMBLING
+}
+
+/// One row per user. Singleton, created with the account.
+model Protection {
+  userId String @id
+
+  /// Is filtering on. Independent of the lock and of accountability.
+  protectionOn Boolean @default(true)
+
+  /// Is a human looped in. Independent of lockLevel -- level 4 is not the same
+  /// thing as accountability being switched on.
+  accountabilityOn Boolean @default(false)
+
+  /// 1 none | 2 pin | 3 delay | 4 partner. Constrained in the migration.
+  lockLevel Int @default(1)
+
+  /// scrypt hash. Never returned by any endpoint; the API exposes `pinSet` only.
+  pinHash String?
+
+  /// One of 15 | 60 | 1440 | 2880. Constrained in the migration.
+  waitingPeriodMinutes Int @default(1440)
+
+  /// Level 4's approver. Deliberately nullable even at level 4 -- the UI treats
+  /// "level 4 with no approver" as a valid state that needs attention, so a NOT
+  /// NULL constraint here would make a reachable state unrepresentable.
+  partnerId String?
+
+  /// Fixed 4-value set, always read as a whole. An enum array rather than a join
+  /// table: nothing ever queries "who enabled gambling".
+  enabledCategories ProtectionCategory[] @default([ADULT_WEBSITES, ADULT_APPS])
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  user    User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  partner Partner? @relation(fields: [partnerId], references: [id], onDelete: SetNull)
+
+  @@index([partnerId])
+  @@map("protection")
+}
+
+// ---------------------------------------------------------------------------
+// Devices and the only telemetry we keep
+// ---------------------------------------------------------------------------
+
+enum DevicePlatform {
+  IOS
+  ANDROID
+  MACOS
+  WINDOWS
+}
+
+enum DeviceStatus {
+  PROTECTED
+  PAUSED
+  OFFLINE
+  NEEDS_SETUP
+}
+
+model Device {
+  id     String @id @default(cuid())
+  userId String
+
+  name     String
+  platform DevicePlatform
+  status   DeviceStatus   @default(NEEDS_SETUP)
+
+  /// Stable per-installation id. `isCurrent` is NOT stored: it is computed by
+  /// comparing this to the caller's own installId, since it is a property of the
+  /// request, not of the device.
+  installId String? @unique
+
+  lastSeenAt DateTime @default(now())
+
+  /// Echo of the optimistic id the client invented, so the mobile store can
+  /// reconcile, and so a retried create is idempotent.
+  clientRef String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  user        User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  blockCounts BlockCount[]
+
+  @@unique([userId, clientRef])
+  @@index([userId])
+  @@index([lastSeenAt])
+  @@map("device")
+}
+
+/// Server-issued pairing codes. The prototype generates these on the device and
+/// never verifies them; here they have an owner and a TTL.
+model PairingCode {
+  code       String   @id
+  userId     String
+  expiresAt  DateTime
+  consumedAt DateTime?
+  createdAt  DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([expiresAt])
+  @@map("pairing_code")
+}
+
+/// The entire analytics surface: how many blocks, on which device, on which day.
+/// No domain, no URL, no category. Adding such a column would break a promise
+/// made explicitly in the app's privacy screen.
+model BlockCount {
+  deviceId String
+  /// Date only, UTC midnight.
+  day      DateTime @db.Date
+  count    Int      @default(0)
+
+  device Device @relation(fields: [deviceId], references: [id], onDelete: Cascade)
+
+  @@id([deviceId, day])
+  @@index([day])
+  @@map("block_count")
+}
+
+// ---------------------------------------------------------------------------
+// Accountability partners
+// ---------------------------------------------------------------------------
+
+enum PartnerStatus {
+  ACTIVE
+  PENDING
+  DECLINED
+}
+
+model Partner {
+  id     String @id @default(cuid())
+  userId String
+
+  name  String
+  /// Free text. The invite UI suggests five values, but seeded data holds others
+  /// ("Wife"), so this is not an enum.
+  relationship String
+  email        String
+  status       PartnerStatus @default(PENDING)
+
+  invitedAt   DateTime  @default(now())
+  respondedAt DateTime?
+
+  /// Partners never get an account. They act through a hashed single-use token.
+  inviteTokenHash String?   @unique
+  inviteExpiresAt DateTime?
+
+  clientRef String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  user     User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+  requests DisableRequest[]
+  lockedBy Protection[]
+
+  @@unique([userId, clientRef])
+  @@index([userId])
+  @@map("partner")
+}
+
+// ---------------------------------------------------------------------------
+// Disable requests -- the anti-tamper core
+// ---------------------------------------------------------------------------
+
+enum RequestMethod {
+  DELAY
+  PARTNER
+}
+
+/// Clearing the lock and merely weakening it clear the same barrier but must not
+/// have the same effect when approved, so intent is a column rather than
+/// something inferred from the reason text.
+enum RequestIntent {
+  DISABLE
+  LOWER_LEVEL
+}
+
+enum RequestStatus {
+  PENDING
+  APPROVED
+  DECLINED
+  EXPIRED
+  CANCELLED
+}
+
+model DisableRequest {
+  id     String @id @default(cuid())
+  userId String
+
+  method RequestMethod
+  intent RequestIntent
+  /// Only set when intent is LOWER_LEVEL.
+  targetLevel Int?
+  status      RequestStatus @default(PENDING)
+
+  /// Shown to the partner verbatim. Mandatory for PARTNER, optional for DELAY.
+  reason String @default("")
+
+  requestedAt DateTime @default(now())
+
+  /// DELAY only: when the countdown ends. Authoritative, and server-owned --
+  /// the prototype computed this on the device and stored it in AsyncStorage,
+  /// which is indefensible in an app built to resist its own user.
+  readyAt DateTime?
+
+  /// PARTNER only: when the request lapses unanswered.
+  expiresAt DateTime?
+
+  partnerId  String?
+  decidedAt  DateTime?
+  /// Hashed token the partner used, for an audit trail without storing the token.
+  decidedVia String?
+
+  clientRef String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  user    User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  partner Partner? @relation(fields: [partnerId], references: [id], onDelete: SetNull)
+
+  @@unique([userId, clientRef])
+  @@index([userId, status])
+  @@index([status, expiresAt])
+  @@index([status, readyAt])
+  @@map("disable_request")
+}
+
+// ---------------------------------------------------------------------------
+// Blocklist: the user's own rules, plus the feeds we serve
+// ---------------------------------------------------------------------------
+
+enum RuleList {
+  ALLOW
+  BLOCK
+}
+
+/// One row per (user, domain) with a discriminator, so a domain physically
+/// cannot be on both lists at once. The prototype permits that contradiction;
+/// this removes the question rather than answering it.
+model UserRule {
+  id     String @id @default(cuid())
+  userId String
+
+  /// Already normalised: lowercased, no scheme, no path, no leading "www.".
+  domain String
+  list   RuleList
+
+  createdAt DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, domain])
+  @@index([userId, list])
+  @@map("user_rule")
+}
+
+model Feed {
+  id          String  @id
+  name        String
+  url         String
+  description String  @default("")
+  enabled     Boolean @default(true)
+
+  /// Per-feed rather than a global constant, so small curated categories are
+  /// possible without weakening the truncated-download guard for large ones.
+  minEntries Int @default(1000)
+
+  /// Which of the app's four categories this feed serves.
+  ///
+  /// An array because one list can serve more than one: an adult-domain feed
+  /// covers both the websites and the app backends, which resolve the same
+  /// hostnames. Without this a device that enabled only adult sites would be
+  /// handed the gambling list too, and the category toggles would be decoration.
+  categories ProtectionCategory[] @default([])
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  versions FeedVersion[]
+  attempts FeedRefreshAttempt[]
+
+  @@map("feed")
+}
+
+model FeedVersion {
+  id     String @id @default(cuid())
+  feedId String
+
+  entries Int
+  sha256  String
+
+  /// Size of the raw upstream download.
+  sourceBytes Int
+  /// Size of the normalised, deduplicated, sorted artifact we actually serve.
+  /// The prototype conflated these two and reported the wrong one.
+  artifactBytes Int
+
+  /// gzipped newline-separated domains. Object storage is the production move;
+  /// bytea keeps the local story to one dependency.
+  artifact Bytes
+
+  publishedAt DateTime?
+  fetchedAt   DateTime  @default(now())
+
+  feed Feed @relation(fields: [feedId], references: [id], onDelete: Cascade)
+
+  @@unique([feedId, sha256])
+  @@index([feedId, publishedAt])
+  @@map("feed_version")
+}
+
+model FeedRefreshAttempt {
+  id     String @id @default(cuid())
+  feedId String
+
+  ok        Boolean
+  entries   Int?
+  unchanged Boolean @default(false)
+  error     String?
+  at        DateTime @default(now())
+
+  feed Feed @relation(fields: [feedId], references: [id], onDelete: Cascade)
+
+  @@index([feedId, at])
+  @@map("feed_refresh_attempt")
+}
+
+// ---------------------------------------------------------------------------
+// Subscription and settings
+// ---------------------------------------------------------------------------
+
+enum PlanId {
+  FREE
+  PREMIUM
+}
+
+enum BillingPeriod {
+  MONTHLY
+  YEARLY
+}
+
+model Subscription {
+  userId String @id
+
+  plan   PlanId        @default(FREE)
+  period BillingPeriod @default(MONTHLY)
+  /// Null iff plan is FREE.
+  renewsAt DateTime?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("subscription")
+}
+
+/// `shareActivityDetail` is absent on purpose. The app calls it "not a setting --
+/// a guarantee", so giving it a column would imply it could be switched on.
+model ApprovalSettings {
+  userId String @id
+
+  notifyOnDisable     Boolean @default(true)
+  notifyOnLevelChange Boolean @default(true)
+  weeklyDigest        Boolean @default(false)
+
+  updatedAt DateTime @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("approval_settings")
+}
+
+model NotificationSettings {
+  userId String @id
+
+  blockedAttempts Boolean @default(true)
+  partnerActivity Boolean @default(true)
+  weeklyReport    Boolean @default(true)
+  productUpdates  Boolean @default(false)
+
+  updatedAt DateTime @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("notification_settings")
+}
+
+enum BlockedScreenTheme {
+  CALM
+  BOLD
+  MINIMAL
+}
+
+model BlockedScreenConfig {
+  userId String @id
+
+  theme    BlockedScreenTheme @default(CALM)
+  headline String             @db.VarChar(40)
+  message  String             @db.VarChar(160)
+
+  showPartnerButton     Boolean @default(true)
+  showBreathingExercise Boolean @default(true)
+
+  updatedAt DateTime @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("blocked_screen_config")
+}
+
+model PushToken {
+  id       String         @id @default(cuid())
+  userId   String
+  token    String         @unique
+  platform DevicePlatform
+  createdAt DateTime      @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@map("push_token")
+}
+
+// ---------------------------------------------------------------------------
+// Transactional outbox
+// ---------------------------------------------------------------------------
+
+/// Written in the same transaction as the domain change it describes, so a
+/// notification can never be sent for something that did not commit, and a
+/// committed change can never silently fail to notify.
+model Outbox {
+  id String @id @default(cuid())
+
+  aggregateType String
+  aggregateId   String
+  eventType     String
+  payload       Json
+
+  publishedAt DateTime?
+  attempts    Int       @default(0)
+  lastError   String?
+
+  createdAt DateTime @default(now())
+
+  @@index([publishedAt, createdAt])
+  @@map("outbox")
+}
