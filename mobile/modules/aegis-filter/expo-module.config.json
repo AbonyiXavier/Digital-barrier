@@ -1,0 +1,9 @@
+{
+  "platforms": ["apple", "android", "web"],
+  "apple": {
+    "modules": ["AegisFilterModule"]
+  },
+  "android": {
+    "modules": ["expo.modules.aegisfilter.AegisFilterModule"]
+  }
+}

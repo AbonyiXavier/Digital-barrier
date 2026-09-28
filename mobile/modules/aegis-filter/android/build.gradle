@@ -1,0 +1,29 @@
+plugins {
+  id 'com.android.library'
+  id 'expo-module-gradle-plugin'
+}
+
+group = 'expo.modules.aegisfilter'
+version = '0.1.0'
+
+android {
+  namespace "expo.modules.aegisfilter"
+  defaultConfig {
+    versionCode 1
+    versionName "0.1.0"
+  }
+  lintOptions {
+    abortOnError false
+  }
+  testOptions {
+    unitTests.returnDefaultValues = true
+  }
+}
+
+dependencies {
+  // The conformance suite runs on the JVM, not a device: the blocklist reader and
+  // the DNS codec are pure logic, and they are where a mismatch with the server
+  // would silently block the wrong things.
+  testImplementation 'junit:junit:4.13.2'
+  testImplementation 'org.json:json:20240303'
+}

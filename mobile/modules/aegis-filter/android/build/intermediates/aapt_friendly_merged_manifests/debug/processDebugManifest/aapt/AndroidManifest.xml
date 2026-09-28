@@ -1,0 +1,38 @@
+<?xml version="1.0" encoding="utf-8"?>
+<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+    package="expo.modules.aegisfilter" >
+
+    <uses-sdk android:minSdkVersion="24" />
+
+    <!--
+       A VpnService must run in the foreground, and Android 14+ requires the
+       subtype to be declared. "specialUse" is the correct one: this is not media
+       playback or location tracking, it is a always-on network filter.
+    -->
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_SPECIAL_USE" />
+    <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
+    <uses-permission android:name="android.permission.INTERNET" />
+
+    <application>
+
+        <!--
+         BIND_VPN_SERVICE is enforced by the system: only Android itself may bind
+         this, which is what stops another app from driving our tunnel.
+        -->
+        <service
+            android:name="expo.modules.aegisfilter.AegisVpnService"
+            android:exported="false"
+            android:foregroundServiceType="specialUse"
+            android:permission="android.permission.BIND_VPN_SERVICE" >
+            <intent-filter>
+                <action android:name="android.net.VpnService" />
+            </intent-filter>
+
+            <property
+                android:name="android.app.PROPERTY_SPECIAL_USE_FGS_SUBTYPE"
+                android:value="Filters DNS on the device to block adult content the user chose to block." />
+        </service>
+    </application>
+
+</manifest>

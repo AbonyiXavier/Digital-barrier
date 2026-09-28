@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="expo.modules.aegisfilter.ConformanceTest" tests="7" skipped="0" failures="0" errors="0" timestamp="2026-09-27T09:19:22.386Z" hostname="Franciss-MacBook-Pro.local" time="0.032">
+  <properties/>
+  <testcase name="sinkhole replies are byte-identical to the server's" classname="expo.modules.aegisfilter.ConformanceTest" time="0.02"/>
+  <testcase name="https records get NODATA so ipv4hint cannot route around us" classname="expo.modules.aegisfilter.ConformanceTest" time="0.001"/>
+  <testcase name="dns questions parse to the same values" classname="expo.modules.aegisfilter.ConformanceTest" time="0.001"/>
+  <testcase name="fnv1a64 matches the server" classname="expo.modules.aegisfilter.ConformanceTest" time="0.005"/>
+  <testcase name="refuses an artifact it does not understand" classname="expo.modules.aegisfilter.ConformanceTest" time="0.0"/>
+  <testcase name="label matching never catches a lookalike" classname="expo.modules.aegisfilter.ConformanceTest" time="0.003"/>
+  <testcase name="compiled artifact answers exactly as the server does" classname="expo.modules.aegisfilter.ConformanceTest" time="0.001"/>
+  <system-out><![CDATA[]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>
