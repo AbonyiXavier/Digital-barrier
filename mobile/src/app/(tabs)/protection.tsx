@@ -17,7 +17,7 @@ import {
   Toggle,
 } from '@/components/ui';
 import { PROTECTION_CATEGORIES } from '@/data/seed';
-import { describeEnforcement, useFilter } from '@/lib/filter';
+import { coverageOf, describeEnforcement, isReassuring, useFilter } from '@/lib/filter';
 import { countdown, describeWaitingPeriod, plural, relativeTime } from '@/lib/format';
 import {
   useActivePartner,
@@ -42,7 +42,15 @@ export default function ProtectionTabScreen() {
   const protectedDevices = useProtectedDevices();
   const isPremium = useIsPremium();
 
-  const on = state.protectionOn;
+  /*
+    The hero reports the device, not the account. `state.protectionOn` alone
+    would render a green "Protection is on" while this phone sits waiting for
+    VPN consent — telling someone they are covered when nothing is being
+    filtered. The amber branch exists so that claim is never made falsely.
+  */
+  const coverage = coverageOf(state.protectionOn, filter.state);
+  const on = isReassuring(coverage);
+  const gap = coverage.kind === 'gap';
 
   return (
     <Screen
@@ -54,17 +62,23 @@ export default function ProtectionTabScreen() {
         style={
           on
             ? undefined
-            : { backgroundColor: theme.colors.dangerSoft, borderWidth: 1, borderColor: theme.colors.danger }
+            : {
+                backgroundColor: gap ? theme.colors.warnSoft : theme.colors.dangerSoft,
+                borderWidth: 1,
+                borderColor: gap ? theme.colors.warn : theme.colors.danger,
+              }
         }>
         <View style={[styles.hero, { gap: theme.spacing.md }]}>
           <Icon
-            name={on ? 'shield-checkmark' : 'shield-outline'}
+            name={on ? 'shield-checkmark' : gap ? 'shield-half-outline' : 'shield-outline'}
             size={46}
-            color={on ? theme.colors.textOnAccent : theme.colors.danger}
+            color={
+              on ? theme.colors.textOnAccent : gap ? theme.colors.warn : theme.colors.danger
+            }
           />
 
           <Text variant="h1" align="center" tone={on ? 'onAccent' : 'default'}>
-            {on ? 'Protection is on' : 'Protection is off'}
+            {on ? 'Protection is on' : gap ? 'Not filtering here' : 'Protection is off'}
           </Text>
 
           <Text
@@ -74,11 +88,13 @@ export default function ProtectionTabScreen() {
             style={on ? styles.heroSub : undefined}>
             {on
               ? `Adult content is blocked on ${plural(protectedDevices.length, 'device')}. Turning it off goes through your protection lock.`
-              : 'Nothing is being filtered right now. Turning it back on takes one tap, whenever you’re ready.'}
+              : gap
+                ? 'Protection is on for your account, but this phone is not filtering — so nothing is being blocked here yet.'
+                : 'Nothing is being filtered right now. Turning it back on takes one tap, whenever you’re ready.'}
           </Text>
 
           <View style={[styles.heroAction, { marginTop: theme.spacing.sm }]}>
-            {on ? (
+            {state.protectionOn ? (
               <Button
                 label="Turn protection off"
                 variant="secondary"

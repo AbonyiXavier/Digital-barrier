@@ -182,7 +182,12 @@ model Device {
   /// Stable per-installation id. `isCurrent` is NOT stored: it is computed by
   /// comparing this to the caller's own installId, since it is a property of the
   /// request, not of the device.
-  installId String? @unique
+  ///
+  /// Unique per user, not globally: a device row means "this account is covered on
+  /// this installation", and two accounts signing in on the same handset is an
+  /// ordinary thing to do. A global constraint made the second sign-in fail with a
+  /// conflict about a row belonging to an account the caller cannot see.
+  installId String?
 
   lastSeenAt DateTime @default(now())
 
@@ -197,6 +202,7 @@ model Device {
   blockCounts BlockCount[]
 
   @@unique([userId, clientRef])
+  @@unique([userId, installId])
   @@index([userId])
   @@index([lastSeenAt])
   @@map("device")

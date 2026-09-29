@@ -32,7 +32,13 @@ import {
   type DeviceView,
   type ProtectionCategoryWire,
 } from './device-wire';
-import type { CreateDeviceDto, RecordBlocksDto, UpdateDeviceDto } from './dto';
+import type {
+  CreateDeviceDto,
+  HeartbeatDto,
+  RecordBlocksDto,
+  RegisterThisDeviceDto,
+  UpdateDeviceDto,
+} from './dto';
 import { CODE_TTL_MS, generatePairingCode, normalisePairingCode } from './pairing-code';
 
 /** Seven days of history, which is what the sparkline draws. */
@@ -68,6 +74,23 @@ export interface ExpectedConfig {
 }
 
 /** UTC midnight, `offset` days before today. Matches how BlockCount.day is stored. */
+/**
+ * The status a heartbeat leaves behind.
+ *
+ * Split out from `heartbeat` so the rules are readable as a set rather than as a
+ * chain of ternaries, and so the one case that matters — never overriding a
+ * user's PAUSED — is visible in a single place.
+ */
+function nextStatus(current: DeviceStatus, filtering: boolean | undefined): DeviceStatus {
+  if (current === 'PAUSED') return current;
+
+  if (filtering === true) return 'PROTECTED';
+  if (filtering === false) return current === 'PROTECTED' ? 'NEEDS_SETUP' : current;
+
+  // No opinion reported: proof of life still clears a derived OFFLINE.
+  return current === 'OFFLINE' ? 'PROTECTED' : current;
+}
+
 function dayAt(offset: number): Date {
   const date = new Date();
   date.setUTCHours(0, 0, 0, 0);
@@ -183,6 +206,65 @@ export class DevicesService {
    * consuming the code all have to commit together, or two phones racing the same
    * code both get in and the cap is enforced against a count that was already stale.
    */
+  /**
+   * Registers the installation that is calling, with no pairing code.
+   *
+   * A pairing code is how an existing device vouches for a new one. The first
+   * phone someone signs in on has nothing to vouch for it, so requiring a code
+   * there meant onboarding could not register anything — which is how an account
+   * ended up with zero devices while every screen said protection was running.
+   *
+   * Idempotent on `(userId, installId)`, so it is safe to call on every launch:
+   * that, rather than a one-shot onboarding step, is what keeps the list correct
+   * for someone who signs in again after reinstalling.
+   *
+   * The row starts at NEEDS_SETUP. Registering proves the app is installed and
+   * signed in; it proves nothing about whether traffic is being filtered, and
+   * only the device's own heartbeat can claim that.
+   */
+  async registerSelf(
+    userId: string,
+    dto: RegisterThisDeviceDto,
+    installId: string | undefined,
+  ): Promise<DeviceView> {
+    if (installId === undefined || installId === '') {
+      throw new BadRequestException({
+        code: 'INSTALL_ID_REQUIRED',
+        message: 'An x-install-id header is required to register this device.',
+      });
+    }
+
+    const existing = await this.prisma.device.findUnique({
+      where: { userId_installId: { userId, installId } },
+    });
+    if (existing !== null) {
+      // Touch lastSeenAt, but never the name: the user may have renamed this row,
+      // and a relaunch is not the moment to overwrite that with a model string.
+      const touched = await this.prisma.device.update({
+        where: { id: existing.id },
+        data: { lastSeenAt: new Date() },
+      });
+      return this.viewOf(touched, installId);
+    }
+
+    const device = await this.prisma.$transaction(async (tx) => {
+      await this.assertDeviceCap(tx, userId);
+      return tx.device.create({
+        data: {
+          userId,
+          name: dto.name,
+          platform: toDbPlatform(dto.platform),
+          status: 'NEEDS_SETUP',
+          installId,
+          lastSeenAt: new Date(),
+        },
+      });
+    });
+
+    this.logger.log(`registered device ${device.id} (${device.platform}) for user ${userId}`);
+    return this.viewOf(device, installId);
+  }
+
   async create(
     userId: string,
     dto: CreateDeviceDto,
@@ -231,15 +313,18 @@ export class DevicesService {
 
       await this.assertDeviceCap(tx, userId);
 
+      // Scoped to the account: an installation registered under someone else's
+      // account is not this caller's business, and reporting a conflict about it
+      // would confirm that another account holds it.
       if (dto.installId !== undefined) {
         const taken = await tx.device.findUnique({
-          where: { installId: dto.installId },
+          where: { userId_installId: { userId, installId: dto.installId } },
           select: { id: true },
         });
         if (taken !== null) {
           throw new ConflictException({
             code: 'INSTALL_ID_IN_USE',
-            message: 'This installation is already registered as a device.',
+            message: 'This installation is already registered as a device on this account.',
           });
         }
       }
@@ -354,7 +439,11 @@ export class DevicesService {
    * change (or was tampered with) corrects itself on its next heartbeat instead of
    * waiting for someone to open the app.
    */
-  async heartbeat(userId: string, deviceId: string): Promise<ExpectedConfig> {
+  async heartbeat(
+    userId: string,
+    deviceId: string,
+    report: HeartbeatDto = {},
+  ): Promise<ExpectedConfig> {
     const device = await this.owned(userId, deviceId);
 
     const protection = await this.prisma.protection.findUnique({
@@ -362,9 +451,17 @@ export class DevicesService {
       select: { protectionOn: true, enabledCategories: true },
     });
 
-    // A heartbeat is proof of life, so it clears a derived OFFLINE. It does not
-    // touch PAUSED or NEEDS_SETUP: those are real states, not observations.
-    const status: DeviceStatus = device.status === 'OFFLINE' ? 'PROTECTED' : device.status;
+    // A heartbeat is proof of life, so it clears a derived OFFLINE.
+    //
+    // `filtering` is the one thing that can also move NEEDS_SETUP, because it is
+    // not an assumption — the device is reporting what it is doing. Without it a
+    // freshly registered phone would sit at NEEDS_SETUP forever while filtering
+    // perfectly well, and the dashboard would keep saying nothing is covered.
+    //
+    // PAUSED is never touched either way: that is the user's own decision, and a
+    // client that reports it is filtering while paused is a client to correct via
+    // the config it gets back, not a reason to overwrite the intent.
+    const status: DeviceStatus = nextStatus(device.status, report.filtering);
     const updated = await this.prisma.device.update({
       where: { id: deviceId },
       data: { lastSeenAt: new Date(), ...(status !== device.status ? { status } : {}) },

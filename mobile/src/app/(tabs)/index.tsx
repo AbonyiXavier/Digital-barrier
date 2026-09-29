@@ -15,6 +15,7 @@ import {
   StatTile,
   Text,
 } from '@/components/ui';
+import { coverageOf, useFilter } from '@/lib/filter';
 import {
   describeWaitingPeriod,
   plural,
@@ -37,6 +38,8 @@ export default function DashboardScreen() {
   const theme = useTheme();
   const router = useRouter();
   const state = useAppState();
+  const filter = useFilter();
+  const coverage = coverageOf(state.protectionOn, filter.state);
   const level = useProtectionLevel();
   const partner = useActivePartner();
   const isPremium = useIsPremium();
@@ -99,17 +102,29 @@ export default function DashboardScreen() {
             <ListRow
               title="Protection"
               subtitle={
-                state.protectionOn
-                  ? 'Filtering is running on your devices'
-                  : 'Filtering is switched off'
+                coverage.kind === 'gap'
+                  ? 'On, but this device is not filtering'
+                  : state.protectionOn
+                    ? 'Filtering is running on your devices'
+                    : 'Filtering is switched off'
               }
               icon="shield-checkmark"
-              iconColor={state.protectionOn ? theme.colors.shield : theme.colors.danger}
+              iconColor={
+                coverage.kind === 'gap'
+                  ? theme.colors.warn
+                  : state.protectionOn
+                    ? theme.colors.shield
+                    : theme.colors.danger
+              }
               trailing={
                 <Badge
-                  label={state.protectionOn ? 'ON' : 'OFF'}
-                  tone={state.protectionOn ? 'shield' : 'danger'}
-                  dot={state.protectionOn}
+                  label={
+                    coverage.kind === 'gap' ? 'CHECK' : state.protectionOn ? 'ON' : 'OFF'
+                  }
+                  tone={
+                    coverage.kind === 'gap' ? 'warn' : state.protectionOn ? 'shield' : 'danger'
+                  }
+                  dot={state.protectionOn && coverage.kind !== 'gap'}
                 />
               }
               onPress={() => router.push('/(tabs)/protection')}

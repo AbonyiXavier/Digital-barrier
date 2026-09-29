@@ -8,6 +8,7 @@
 import { createContext, useContext, type ReactNode } from 'react';
 
 import { useProtectionEnforcement, type EnforcementState } from './enforcement';
+import { useFilteringReport } from './report';
 
 interface FilterContextValue {
   state: EnforcementState;
@@ -19,6 +20,9 @@ const FilterContext = createContext<FilterContextValue | null>(null);
 
 export function FilterProvider({ children }: { children: ReactNode }) {
   const value = useProtectionEnforcement();
+  // Reports what the tunnel is doing, so the server never has to guess a
+  // device's status from the account's intent.
+  useFilteringReport(value.state);
   return <FilterContext.Provider value={value}>{children}</FilterContext.Provider>;
 }
 

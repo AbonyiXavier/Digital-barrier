@@ -1,0 +1,18 @@
+<lint-module
+    format="1"
+    dir="/Users/xavier/Documents/digital-barrier/mobile/modules/aegis-filter/android"
+    name=":aegis-filter"
+    type="LIBRARY"
+    maven="expo.modules.aegisfilter:aegis-filter:0.1.0"
+    agpVersion="8.12.0"
+    buildFolder="build"
+    bootClassPath="/Users/xavier/Library/Android/sdk/platforms/android-36/android.jar:/Users/xavier/Library/Android/sdk/build-tools/35.0.0/core-lambda-stubs.jar"
+    javaSourceLevel="17"
+    compileTarget="android-36"
+    neverShrinking="true">
+  <lintOptions
+      absolutePaths="true"
+      checkReleaseBuilds="true"
+      explainIssues="true"/>
+  <variant name="release"/>
+</lint-module>

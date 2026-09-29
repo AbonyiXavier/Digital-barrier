@@ -38,7 +38,8 @@
           }
         }
       ],
-      "expo-secure-store"
+      "expo-secure-store",
+      "./plugins/with-pinned-jdk"
     ],
     "experiments": {
       "typedRoutes": true,

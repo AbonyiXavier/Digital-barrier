@@ -1,7 +1,9 @@
+import { useRouter } from 'expo-router';
 import { useEffect, useState, type ReactNode } from 'react';
 import { StyleSheet, View } from 'react-native';
 
 import { Button, Icon, ProgressRing, Text } from '@/components/ui';
+import { coverageOf, useFilter } from '@/lib/filter';
 import { countdown, elapsedFraction, plural } from '@/lib/format';
 import {
   useAppDispatch,
@@ -15,16 +17,25 @@ const RING_SIZE = 232;
 const RING_THICKNESS = 16;
 
 /**
- * The emotional centre of the app. Three states, in priority order: a pending
- * request to disable (a countdown), protection on, protection off.
+ * The emotional centre of the app. Four states, in priority order: a pending
+ * request to disable (a countdown), a coverage gap, protection on, protection
+ * off.
+ *
+ * The gap state was added because the other three read only the account's
+ * intent. On a phone that has not been granted VPN consent — or whose tunnel
+ * another VPN has taken — that showed a full green ring reading "Protected" to
+ * someone whose traffic was entirely unfiltered.
  */
 export function ProtectionHero() {
   const theme = useTheme();
   const { colors } = theme;
   const dispatch = useAppDispatch();
+  const router = useRouter();
+  const filter = useFilter();
   const { protectionOn, partners } = useAppState();
   const pending = usePendingRequest();
   const days = useProtectedDays();
+  const coverage = coverageOf(protectionOn, filter.state);
 
   const [now, setNow] = useState(() => Date.now());
 
@@ -61,6 +72,22 @@ export function ProtectionHero() {
         </Text>
         <Text variant="caption" tone="secondary" align="center">
           until protection can be turned off
+        </Text>
+      </>
+    );
+  } else if (coverage.kind === 'gap') {
+    // Deliberately not a full ring. The account is protected, so this is not the
+    // red "Not protected" state — but a complete ring is the one thing this
+    // screen must not draw when nothing is being filtered.
+    progress = 0.5;
+    ringColors = [colors.warn, colors.warn];
+    glow = colors.warnSoft;
+    note = 'Protection is on, but this phone is not filtering.';
+    center = (
+      <>
+        <Icon name="shield-half-outline" size={30} color={colors.warn} />
+        <Text variant="h2" rounded align="center">
+          Not filtering here
         </Text>
       </>
     );
@@ -128,7 +155,15 @@ export function ProtectionHero() {
         </Text>
       ) : null}
 
-      {!protectionOn && !pending ? (
+      {coverage.kind === 'gap' ? (
+        <Button
+          label="Fix this"
+          variant="secondary"
+          icon="shield-half-outline"
+          fullWidth={false}
+          onPress={() => router.push('/(tabs)/protection')}
+        />
+      ) : !protectionOn && !pending ? (
         <Button
           label="Turn protection on"
           variant="shield"

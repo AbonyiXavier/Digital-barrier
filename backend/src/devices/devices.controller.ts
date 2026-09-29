@@ -13,7 +13,13 @@ import { ApiOperation, ApiParam, ApiResponse, ApiTags } from '@nestjs/swagger';
 import { CurrentUserId, InstallId } from '../common';
 import type { DeviceView } from './device-wire';
 import { DevicesService, type ExpectedConfig, type PairingCodeView } from './devices.service';
-import { CreateDeviceDto, RecordBlocksDto, UpdateDeviceDto } from './dto';
+import {
+  CreateDeviceDto,
+  HeartbeatDto,
+  RecordBlocksDto,
+  RegisterThisDeviceDto,
+  UpdateDeviceDto,
+} from './dto';
 
 @ApiTags('devices')
 @Controller('devices')
@@ -44,6 +50,26 @@ export class DevicesController {
   })
   async issuePairingCode(@CurrentUserId() userId: string): Promise<PairingCodeView> {
     return this.devices.issuePairingCode(userId);
+  }
+
+  @Post('this')
+  @ApiOperation({
+    summary: 'Register the calling installation as a device.',
+    description:
+      'No pairing code: the first phone an account signs in on has nothing to pair from. ' +
+      'The installation is identified by the `x-install-id` header, and the call is idempotent ' +
+      'on it, so a client may make it on every launch. The row starts at `needs-setup` — only ' +
+      "the device's own heartbeat can claim it is filtering.",
+  })
+  @ApiResponse({ status: 201, description: 'The registered device, new or existing.' })
+  @ApiResponse({ status: 400, description: 'INSTALL_ID_REQUIRED — no x-install-id header.' })
+  @ApiResponse({ status: 402, description: 'PREMIUM_REQUIRED — the free plan covers fewer devices.' })
+  async registerSelf(
+    @CurrentUserId() userId: string,
+    @Body() dto: RegisterThisDeviceDto,
+    @InstallId() installId: string | undefined,
+  ): Promise<DeviceView> {
+    return this.devices.registerSelf(userId, dto, installId);
   }
 
   @Post()
@@ -103,8 +129,9 @@ export class DevicesController {
   async heartbeat(
     @CurrentUserId() userId: string,
     @Param('id') id: string,
+    @Body() dto: HeartbeatDto,
   ): Promise<ExpectedConfig> {
-    return this.devices.heartbeat(userId, id);
+    return this.devices.heartbeat(userId, id, dto);
   }
 
   @Post(':id/blocks')

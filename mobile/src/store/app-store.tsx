@@ -15,6 +15,7 @@ import { requestFor, type SyncResult } from '@/lib/api/actions';
 import { fetchBootstrap } from '@/lib/api/bootstrap';
 import { ApiError, NetworkError } from '@/lib/api/client';
 import { getInstallId } from '@/lib/api/install-id';
+import { registerThisDevice } from '@/lib/api/this-device';
 import { reconcile } from './reconcile';
 
 import {
@@ -364,6 +365,31 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
       try {
         const fresh = await fetchBootstrap(installIdRef.current);
         if (!cancelled) baseDispatch({ type: 'hydrate', payload: fresh });
+
+        /*
+          Register this handset if the account does not already list it.
+          `isCurrent` is the server comparing each row's install id to ours, so
+          its absence is the authoritative "this phone is not in the list" — and
+          checking it here keeps the common launch to a single round trip.
+
+          Failures are reported, never thrown: hitting the free-plan device cap
+          is a real answer the user needs to see, but it is not a reason to
+          refuse to open the app.
+        */
+        const known = fresh.devices?.some((device) => device.isCurrent) ?? false;
+        if (!known && !cancelled) {
+          try {
+            const registered = await registerThisDevice(installIdRef.current);
+            if (registered !== null && !cancelled) {
+              baseDispatch({
+                type: 'hydrate',
+                payload: await fetchBootstrap(installIdRef.current),
+              });
+            }
+          } catch (error) {
+            if (!cancelled) setSyncError(describe(error));
+          }
+        }
       } catch (error) {
         if (cancelled) return;
         if (error instanceof ApiError && error.status === 401) {
