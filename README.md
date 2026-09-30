@@ -1,4 +1,4 @@
-## Live demo testing from Android phone
+## Demo testing from Android phone
 
 <div align="center">
 
