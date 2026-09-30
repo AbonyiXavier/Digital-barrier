@@ -221,7 +221,7 @@ exact outage it exists to prevent.
 The plist pins an absolute path to the Node binary:
 
 ```xml
-<string>/Users/xavier/.nvm/versions/node/v24.12.0/bin/node</string>
+<string>/Users/<you>/.nvm/versions/node/<version>/bin/node</string>
 ```
 
 If that version is removed (`nvm uninstall 24`), or the project directory is
