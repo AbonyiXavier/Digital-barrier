@@ -1,3 +1,12 @@
+## Demo
+
+
+
+https://github.com/user-attachments/assets/50bc08d9-3022-4adb-b401-0ae385313c6c
+
+
+
+
 # Digital Barrier — prototype
 
 The smallest thing that proves the core mechanic works:
