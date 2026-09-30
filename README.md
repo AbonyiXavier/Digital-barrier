@@ -1,10 +1,10 @@
-## Demo
+## Demo testing from real Android phone
 
-
+<div align="center">
 
 https://github.com/user-attachments/assets/50bc08d9-3022-4adb-b401-0ae385313c6c
 
-
+</div>
 
 
 # Digital Barrier — prototype
